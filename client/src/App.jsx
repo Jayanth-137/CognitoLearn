@@ -27,7 +27,6 @@ const Login = lazy(() => import('./screens/Login'));
 const SignUp = lazy(() => import('./screens/SignUp'));
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
 
 // Layout for authenticated pages (with sidebar)
 function AuthenticatedLayout({ children }) {
@@ -95,9 +94,10 @@ function AppContent() {
     transition: { duration: 0.3, ease: "easeOut" }
   };
 
-  // Show loading spinner while checking auth
+  // Keep the static splash screen visible while auth initializes.
+  // Rendering another loader here causes a duplicate stacked loading UI.
   if (loading) {
-    return <PageLoader message="Verifying your session..." />;
+    return null;
   }
 
   // Check if current route is auth page
@@ -106,11 +106,7 @@ function AppContent() {
   // Auth pages don't need the sidebar layout
   if (isAuthPage) {
     return (
-      <Suspense fallback={
-        <div className="flex-1 flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-        </div>
-      }>
+      <Suspense fallback={<PageLoader message="Loading page..." />}>
         <Routes location={location}>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
@@ -122,31 +118,7 @@ function AppContent() {
   // Protected pages with sidebar layout
   return (
     <AuthenticatedLayout>
-      <Suspense fallback={
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 relative">
-              <div
-                className="absolute inset-0 rounded-full border-[3px] border-transparent animate-spin"
-                style={{
-                  borderTopColor: '#6366f1',
-                  borderRightColor: '#a855f7',
-                }}
-              />
-              <div
-                className="absolute inset-[6px] rounded-full border-2 border-transparent animate-spin"
-                style={{
-                  borderTopColor: '#818cf8',
-                  borderRightColor: '#c084fc',
-                  animationDirection: 'reverse',
-                  animationDuration: '0.8s',
-                }}
-              />
-            </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Loading page...</p>
-          </div>
-        </div>
-      }>
+      <Suspense fallback={<PageLoader message="Loading page..." />}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}

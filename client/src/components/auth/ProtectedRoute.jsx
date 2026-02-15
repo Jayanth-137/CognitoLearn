@@ -5,13 +5,10 @@ const ProtectedRoute = ({ children }) => {
     const { isAuthenticated, loading } = useAuth();
     const location = useLocation();
 
-    // Show nothing while checking auth status
+    // AppContent already handles auth bootstrapping state.
+    // Avoid rendering a second loader on top of the splash/route loaders.
     if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
-                <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-            </div>
-        );
+        return null;
     }
 
     if (!isAuthenticated) {
