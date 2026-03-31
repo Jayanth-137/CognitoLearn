@@ -91,7 +91,7 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
             bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-white/20 dark:border-slate-700/30 shadow-lg shadow-slate-200/20 dark:shadow-black/20">
 
             {/* 1. Left: Mobile Toggle + Website Name */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                 {/* Mobile Toggle */}
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -104,19 +104,21 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
                 {/* Website Name - Gradient & Clickable */}
                 <button
                     onClick={() => navigate('/')}
-                    className="text-lg sm:text-xl font-bold font-display tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+                    className="flex-shrink-0 text-lg sm:text-xl font-bold font-display tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
                 >
                     CognitoLearn
                 </button>
             </div>
 
             {/* Centered Page Title / Dynamic Roadmap Name - Hidden on mobile */}
-            <h1 className="absolute left-1/2 -translate-x-1/2 text-sm md:text-base lg:text-lg font-bold text-slate-900 dark:text-slate-100 font-display whitespace-nowrap hidden md:block max-w-[200px] lg:max-w-none truncate">
-                {getPageTitle()}
-            </h1>
+            <div className="flex-1 min-w-0 hidden md:flex justify-center px-4">
+                <h1 className="text-sm md:text-base lg:text-lg font-bold text-slate-900 dark:text-slate-100 font-display truncate" title={getPageTitle()}>
+                    {getPageTitle()}
+                </h1>
+            </div>
 
             {/* 2 & 3. Right: Streak, Theme & Profile */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center justify-end gap-2 sm:gap-4 flex-shrink-0">
 
                 {/* Streak - Compact on mobile */}
                 {/* Streak - Compact on mobile */}

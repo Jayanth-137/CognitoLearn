@@ -213,23 +213,23 @@ const ChatPanel = ({ isOpen, onClose, roadmapId, roadmap, initialTopic }) => {
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* Backdrop */}
+                    {/* Backdrop — mobile only; push layout handles desktop */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 lg:bg-transparent lg:backdrop-blur-none lg:pointer-events-none"
+                        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[24] lg:hidden"
                         onClick={onClose}
                     />
 
-                    {/* Panel */}
+                    {/* Panel — floating layout */}
                     <motion.div
-                        initial={{ x: '100%', opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: '100%', opacity: 0 }}
+                        initial={{ x: '100%', opacity: 0, scale: 0.95 }}
+                        animate={{ x: 0, opacity: 1, scale: 1 }}
+                        exit={{ x: '100%', opacity: 0, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                        className="fixed right-0 top-0 bottom-0 w-full sm:w-[440px] z-50 flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-l border-slate-200/80 dark:border-slate-700/50 shadow-2xl"
+                        className="fixed right-2 sm:right-3 lg:right-4 top-2 sm:top-3 lg:top-3 bottom-2 sm:bottom-3 lg:bottom-4 w-[calc(100%-1rem)] sm:w-[400px] z-[40] flex flex-col bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl border border-white/40 dark:border-slate-700/50 shadow-2xl shadow-slate-200/20 dark:shadow-black/40 rounded-2xl md:rounded-[24px] overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}

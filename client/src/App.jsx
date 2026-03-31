@@ -12,6 +12,8 @@ import Background from './components/layout/Background';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Header from './components/layout/Header';
 import PageLoader from './components/layout/PageLoader';
+import ChatPanel from './components/roadmap/ChatPanel';
+import { ChatPanelProvider, useChatPanel } from './context/ChatPanelContext';
 
 // Lazy loaded screens (code splitting for better initial load)
 const Dashboard = lazy(() => import('./screens/Dashboard'));
@@ -27,50 +29,86 @@ const SignUp = lazy(() => import('./screens/SignUp'));
 
 import { AnimatePresence, motion } from 'framer-motion';
 
+// Renders the ChatPanel consuming state from ChatPanelContext
+function ChatPanelConsumer() {
+  const { chatOpen, chatRoadmapId, chatRoadmap, chatInitialTopic, closeChat } = useChatPanel();
+  return (
+    <ChatPanel
+      isOpen={chatOpen}
+      onClose={closeChat}
+      roadmapId={chatRoadmapId}
+      roadmap={chatRoadmap}
+      initialTopic={chatInitialTopic}
+    />
+  );
+}
+
 // Layout for authenticated pages (with sidebar)
 function AuthenticatedLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+
+  // Panel width + right margin + gap for floating layout (400 + 16 + 16)
+  const PANEL_WIDTH = 432;
+
+  const handleChatOpenChange = (isOpen) => {
+    setChatOpen(isOpen);
+    if (isOpen) {
+      // Auto-collapse sidebar to free up horizontal space for push layout
+      setSidebarCollapsed(true);
+      setSidebarOpen(false);
+    }
+  };
 
   return (
-    <div className="flex min-h-screen relative">
-      <Background />
+    <ChatPanelProvider onChatOpenChange={handleChatOpenChange}>
+      <div className="flex min-h-screen relative">
+        <Background />
 
-      {/* Sidebar Navigation */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        isCollapsed={sidebarCollapsed}
-        onClose={() => setSidebarOpen(false)}
-        toggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
-          onClick={() => setSidebarOpen(false)}
+        {/* Sidebar Navigation */}
+        <Sidebar
+          isOpen={sidebarOpen}
+          isCollapsed={sidebarCollapsed}
+          onClose={() => setSidebarOpen(false)}
+          toggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
-      )}
 
-      {/* Main Content */}
-      <main
-        className={`flex-1 min-h-screen overflow-x-hidden relative z-10 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'lg:ml-28' : 'lg:ml-72'
+        {/* Mobile Overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Main Content — pushed left by right-padding when chat is open */}
+        <main
+          className={`flex-1 min-h-screen overflow-x-hidden relative z-10 ${
+            sidebarCollapsed ? 'lg:ml-28' : 'lg:ml-72'
           }`}
-      >
+          style={{
+            paddingRight: chatOpen ? `${PANEL_WIDTH}px` : '0px',
+            transition: 'padding-right 300ms cubic-bezier(0.4,0,0.2,1), margin-left 300ms cubic-bezier(0.4,0,0.2,1)'
+          }}
+        >
+          {/* Top Glass Header */}
+          <Header
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            sidebarCollapsed={sidebarCollapsed}
+            setSidebarCollapsed={setSidebarCollapsed}
+          />
 
-        {/* Top Glass Header */}
-        <Header
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          sidebarCollapsed={sidebarCollapsed}
-          setSidebarCollapsed={setSidebarCollapsed}
-        />
+          <div className="pt-6 lg:pt-0">
+            {children}
+          </div>
+        </main>
 
-        <div className="pt-6 lg:pt-0">
-          {children}
-        </div>
-      </main>
-    </div>
+        {/* Global Chat Panel — rendered at layout level, outside main */}
+        <ChatPanelConsumer />
+      </div>
+    </ChatPanelProvider>
   );
 }
 

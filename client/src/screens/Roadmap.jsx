@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Loader2, Sparkles } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import RoadmapContainer from '../components/roadmap/RoadmapContainer';
-import ChatPanel from '../components/roadmap/ChatPanel';
 import CelebrationModal from '../components/ui/CelebrationModal';
 import api from '../api/client';
 import { useRoadmaps } from '../context/RoadmapContext';
 import { useToast } from '../context/ToastContext';
+import { useChatPanel } from '../context/ChatPanelContext';
 
 const Roadmap = () => {
     const { id } = useParams();
@@ -19,9 +19,8 @@ const Roadmap = () => {
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
     const [showCelebration, setShowCelebration] = useState(false);
-    const [chatOpen, setChatOpen] = useState(false);
-    const [chatInitialTopic, setChatInitialTopic] = useState(null);
     const prevProgressRef = useRef(null);
+    const { openChat, chatOpen } = useChatPanel();
 
     // Fetch roadmap on mount or when ID changes
     useEffect(() => {
@@ -245,38 +244,33 @@ const Roadmap = () => {
                     data={roadmap.topics}
                     roadmapId={roadmap._id}
                     onSubtopicToggle={handleSubtopicToggle}
-                    onChatTopic={(topicTitle) => {
-                        setChatInitialTopic(topicTitle);
-                        setChatOpen(true);
-                    }}
+                    onChatTopic={(topicTitle) => openChat({
+                        roadmapId: roadmap._id,
+                        roadmap,
+                        initialTopic: topicTitle
+                    })}
                 />
             </div>
 
-            {/* Floating AI Mentor Button */}
-            <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                    setChatInitialTopic(null);
-                    setChatOpen(true);
-                }}
-                className="fixed bottom-6 right-6 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/40 hover:shadow-2xl hover:shadow-indigo-500/50 transition-shadow z-40"
-                title="Open AI Mentor"
-            >
-                <Sparkles size={24} />
-            </motion.button>
-
-            {/* AI Chat Panel */}
-            <ChatPanel
-                isOpen={chatOpen}
-                onClose={() => {
-                    setChatOpen(false);
-                    setChatInitialTopic(null);
-                }}
-                roadmapId={roadmap._id}
-                roadmap={roadmap}
-                initialTopic={chatInitialTopic}
-            />
+            {/* Floating AI Mentor Button — hidden when panel is open */}
+            <AnimatePresence>
+                {!chatOpen && (
+                    <motion.button
+                        key="fab"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                        onClick={() => openChat({ roadmapId: roadmap._id, roadmap })}
+                        className="fixed bottom-6 right-6 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/40 hover:shadow-2xl hover:shadow-indigo-500/50 transition-shadow z-[26]"
+                        title="Open AI Mentor"
+                    >
+                        <Sparkles size={24} />
+                    </motion.button>
+                )}
+            </AnimatePresence>
 
             {/* Celebration Modal */}
             <CelebrationModal
