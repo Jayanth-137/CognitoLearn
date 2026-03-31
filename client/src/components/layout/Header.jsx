@@ -57,7 +57,6 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
             case '/': return 'Home';
             case '/analytics': return 'Analytics';
             case '/roadmap': return 'Roadmap';
-            case '/mentor': return 'AI Mentor';
             case '/profile': return 'Profile';
             case '/summarizer': return 'Summarizer';
             default:

@@ -17,7 +17,6 @@ import PageLoader from './components/layout/PageLoader';
 const Dashboard = lazy(() => import('./screens/Dashboard'));
 const Analytics = lazy(() => import('./screens/Analytics'));
 const Roadmap = lazy(() => import('./screens/Roadmap'));
-const AIMentor = lazy(() => import('./screens/AIMentor'));
 const Summarizer = lazy(() => import('./screens/Summarizer'));
 const Quiz = lazy(() => import('./screens/Quiz'));
 const Quizzes = lazy(() => import('./screens/Quizzes'));
@@ -132,7 +131,6 @@ function AppContent() {
               <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
               <Route path="/roadmap" element={<ProtectedRoute><Roadmap /></ProtectedRoute>} />
               <Route path="/roadmap/:id" element={<ProtectedRoute><Roadmap /></ProtectedRoute>} />
-              <Route path="/mentor" element={<ProtectedRoute><AIMentor /></ProtectedRoute>} />
               <Route path="/summarizer" element={<ProtectedRoute><Summarizer /></ProtectedRoute>} />
               <Route path="/quiz/:roadmapId/:topicId" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
               <Route path="/quizzes" element={<ProtectedRoute><Quizzes /></ProtectedRoute>} />

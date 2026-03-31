@@ -6,7 +6,7 @@ from flask_cors import CORS
 
 from app_config import ALLOWED_LEVELS, init_gemini_model, normalize_difficulty, normalize_level
 from json_parser import extract_json_from_text
-from prompts import build_quiz_prompt, build_roadmap_prompt
+from prompts import build_chat_prompt, build_quiz_prompt, build_roadmap_prompt
 from validators import validate_quiz_response, validate_roadmap_response
 
 load_dotenv()
@@ -87,8 +87,54 @@ def generate_quiz():
         return jsonify({"success": False, "error": "Failed to generate quiz. Please try again."}), 500
 
 
+@app.route("/chat", methods=["POST"])
+def chat():
+    if not model:
+        return jsonify({"success": False, "error": "Gemini API not configured"}), 500
+
+    data = request.json or {}
+    message = str(data.get("message", "")).strip()
+    history = data.get("history", [])
+    roadmap_context = data.get("roadmapContext", {})
+
+    if not message:
+        return jsonify({"success": False, "error": "Message is required"}), 400
+
+    try:
+        # Build system prompt with roadmap context
+        system_prompt = build_chat_prompt(roadmap_context)
+
+        # Convert history to Gemini format
+        gemini_history = []
+        for msg in history:
+            role = "user" if msg.get("role") == "user" else "model"
+            text = msg.get("text", "")
+            if text:
+                gemini_history.append({"role": role, "parts": [text]})
+
+        # Start a chat session with history
+        chat_session = model.start_chat(history=gemini_history)
+
+        # Prepend system prompt to the user message for context
+        full_message = f"{system_prompt}\n\nStudent's question: {message}" if not gemini_history else message
+
+        # For follow-up messages, the system prompt is already established via the first message
+        # But if this is the first message in the session, we include the system prompt
+        if not gemini_history:
+            response = chat_session.send_message(f"{system_prompt}\n\nStudent's question: {message}")
+        else:
+            response = chat_session.send_message(message)
+
+        reply = response.text.strip()
+        return jsonify({"success": True, "reply": reply})
+    except Exception as e:
+        print(f"Error in chat: {e}")
+        return jsonify({"success": False, "error": "Failed to generate response. Please try again."}), 500
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5001))
     debug = os.getenv("DEBUG", "true").lower() == "true"
     print(f"Starting Gemini AI Service on port {port}")
     app.run(host="0.0.0.0", port=port, debug=debug)
+

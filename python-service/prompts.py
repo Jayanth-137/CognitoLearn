@@ -81,3 +81,46 @@ Constraints:
 
 USER_TOPIC: <<<{topic}>>>
 USER_DIFFICULTY: <<<{difficulty}>>>"""
+
+
+def build_chat_prompt(roadmap_context):
+    title = roadmap_context.get("title", "Unknown")
+    description = roadmap_context.get("description", "")
+    difficulty = roadmap_context.get("difficulty", "Intermediate")
+    progress = roadmap_context.get("progress", 0)
+
+    topics = roadmap_context.get("topics", [])
+    topic_lines = []
+    for t in topics:
+        status = t.get("status", "locked")
+        status_icon = {"completed": "✅", "in-progress": "🔄", "locked": "🔒"}.get(
+            status, "❓"
+        )
+        completed = t.get("completedSubtopics", [])
+        total_subs = t.get("subtopics", [])
+        topic_lines.append(
+            f"  {status_icon} {t.get('title', 'Unknown')} ({len(completed)}/{len(total_subs)} subtopics done)"
+        )
+
+    topics_str = "\n".join(topic_lines) if topic_lines else "  No topics available."
+
+    return f"""You are an AI learning mentor for CognitoLearn — an adaptive learning platform.
+
+The student is currently working on:
+  Roadmap: {title}
+  Description: {description}
+  Difficulty: {difficulty}
+  Overall Progress: {progress}%
+
+Topics:
+{topics_str}
+
+Your role:
+- Help the student understand concepts related to their current roadmap.
+- Answer questions clearly and concisely using markdown formatting.
+- Provide code examples when relevant.
+- Be encouraging and supportive.
+- If the student asks about something outside the roadmap, gently relate it back or help briefly.
+- Keep responses focused and not overly long unless the student asks for a deep dive.
+- Use bullet points, numbered lists, and headers to organize longer answers."""
+

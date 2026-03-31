@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Sparkles } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import RoadmapContainer from '../components/roadmap/RoadmapContainer';
+import ChatPanel from '../components/roadmap/ChatPanel';
 import CelebrationModal from '../components/ui/CelebrationModal';
 import api from '../api/client';
 import { useRoadmaps } from '../context/RoadmapContext';
@@ -18,6 +19,8 @@ const Roadmap = () => {
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
     const [showCelebration, setShowCelebration] = useState(false);
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatInitialTopic, setChatInitialTopic] = useState(null);
     const prevProgressRef = useRef(null);
 
     // Fetch roadmap on mount or when ID changes
@@ -242,8 +245,38 @@ const Roadmap = () => {
                     data={roadmap.topics}
                     roadmapId={roadmap._id}
                     onSubtopicToggle={handleSubtopicToggle}
+                    onChatTopic={(topicTitle) => {
+                        setChatInitialTopic(topicTitle);
+                        setChatOpen(true);
+                    }}
                 />
             </div>
+
+            {/* Floating AI Mentor Button */}
+            <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                    setChatInitialTopic(null);
+                    setChatOpen(true);
+                }}
+                className="fixed bottom-6 right-6 w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/40 hover:shadow-2xl hover:shadow-indigo-500/50 transition-shadow z-40"
+                title="Open AI Mentor"
+            >
+                <Sparkles size={24} />
+            </motion.button>
+
+            {/* AI Chat Panel */}
+            <ChatPanel
+                isOpen={chatOpen}
+                onClose={() => {
+                    setChatOpen(false);
+                    setChatInitialTopic(null);
+                }}
+                roadmapId={roadmap._id}
+                roadmap={roadmap}
+                initialTopic={chatInitialTopic}
+            />
 
             {/* Celebration Modal */}
             <CelebrationModal

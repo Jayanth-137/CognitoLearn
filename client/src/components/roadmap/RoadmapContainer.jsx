@@ -42,7 +42,7 @@ const SubtopicNode = ({ subtopic, onToggle, isLocked, subtopicNumber }) => {
 };
 
 // Main Topic Card Component - Responsive
-const TopicCard = ({ topic, topicNumber, onSubtopicToggle, showSubtopics = false }) => {
+const TopicCard = ({ topic, topicNumber, onSubtopicToggle, onChatTopic, showSubtopics = false }) => {
     const navigate = useNavigate();
 
     const isLocked = topic.status === 'locked';
@@ -57,7 +57,7 @@ const TopicCard = ({ topic, topicNumber, onSubtopicToggle, showSubtopics = false
     };
 
     const handleChat = () => {
-        if (!isLocked) navigate(`/mentor?topic=${encodeURIComponent(topic.title)}`);
+        if (!isLocked && onChatTopic) onChatTopic(topic.title);
     };
 
     return (
@@ -258,7 +258,7 @@ const HorizontalConnector = ({ status }) => {
 };
 
 // Main Roadmap Container - Responsive Layout
-const RoadmapContainer = ({ data, roadmapId, onSubtopicToggle }) => {
+const RoadmapContainer = ({ data, roadmapId, onSubtopicToggle, onChatTopic }) => {
     if (!data || data.length === 0) {
         return (
             <div className="text-center py-12 text-slate-500">
@@ -283,6 +283,7 @@ const RoadmapContainer = ({ data, roadmapId, onSubtopicToggle }) => {
                                     topic={topic}
                                     topicNumber={index + 1}
                                     onSubtopicToggle={onSubtopicToggle}
+                                    onChatTopic={onChatTopic}
                                     showSubtopics={true}
                                 />
                             </div>
@@ -309,6 +310,7 @@ const RoadmapContainer = ({ data, roadmapId, onSubtopicToggle }) => {
                                     topic={topic}
                                     topicNumber={index + 1}
                                     onSubtopicToggle={onSubtopicToggle}
+                                    onChatTopic={onChatTopic}
                                     showSubtopics={false}
                                 />
 

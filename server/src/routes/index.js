@@ -7,6 +7,7 @@ const userRoutes = require('./users');
 const quizRoutes = require('./quizzes');
 const roadmapRoutes = require('./roadmaps');
 const analyticsRoutes = require('./analytics');
+const chatRoutes = require('./chat');
 
 // Public routes
 router.use('/auth', authRoutes);
@@ -16,5 +17,6 @@ router.use('/users', auth, userRoutes);
 router.use('/quizzes', auth, quizRoutes);
 router.use('/roadmaps', auth, roadmapRoutes);
 router.use('/analytics', auth, analyticsRoutes);
+router.use('/chat', auth, chatRoutes);
 
 module.exports = router;
