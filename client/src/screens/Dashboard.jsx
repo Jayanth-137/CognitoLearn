@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, CheckCircle2, Zap, Layout, ArrowRight, Loader2, ChevronDown, Search } from 'lucide-react';
+import { Sparkles, CheckCircle2, Zap, Layout, ArrowRight, Loader2, ChevronDown, Search, FileText, ClipboardList, TrendingUp, MessageCircle } from 'lucide-react';
 import api from '../api/client';
 import { useRoadmaps } from '../context/RoadmapContext';
 import { useToast } from '../context/ToastContext';
@@ -18,8 +18,17 @@ const Dashboard = () => {
     const [levelOpen, setLevelOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const { addRoadmap } = useRoadmaps();
+    const { addRoadmap, roadmaps } = useRoadmaps();
     const { toast } = useToast();
+
+    const handleChatAccess = () => {
+        if (roadmaps.length === 0) {
+            toast.info('Create a roadmap first to use the AI Mentor', { title: 'No Roadmap' });
+            return;
+        }
+        // Navigate to first roadmap (chat will be available there)
+        navigate(`/roadmap/${roadmaps[0]._id}`);
+    };
 
     const handleGenerate = async () => {
         if (!skill.trim()) {
@@ -232,6 +241,60 @@ const Dashboard = () => {
                     <Layout size={18} className="text-blue-500" />
                     <span>Dynamic Graph</span>
                 </motion.div>
+            </motion.div>
+
+            {/* Learning Tools Section */}
+            <motion.div variants={item} className="w-full max-w-4xl mx-auto mt-14">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 text-center">Learning Tools</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Smart Summarizer Card */}
+                    <motion.button
+                        whileHover={{ y: -4 }}
+                        onClick={() => navigate('/summarizer')}
+                        className="group p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200/50 dark:border-purple-700/50 hover:border-purple-300 dark:hover:border-purple-600 transition-all text-left hover:shadow-lg"
+                    >
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 group-hover:scale-110 transition-transform">
+                                <FileText size={24} className="text-white" />
+                            </div>
+                            <ArrowRight size={20} className="text-purple-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Smart Summarizer</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Extract key concepts and generate AI-powered summaries</p>
+                    </motion.button>
+
+                    {/* Quizzes Card */}
+                    <motion.button
+                        whileHover={{ y: -4 }}
+                        onClick={() => navigate('/quizzes')}
+                        className="group p-6 rounded-2xl bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 border border-cyan-200/50 dark:border-cyan-700/50 hover:border-cyan-300 dark:hover:border-cyan-600 transition-all text-left hover:shadow-lg"
+                    >
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-400 group-hover:scale-110 transition-transform">
+                                <ClipboardList size={24} className="text-white" />
+                            </div>
+                            <ArrowRight size={20} className="text-cyan-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Quiz Practice</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Test your knowledge with AI-generated quizzes</p>
+                    </motion.button>
+
+                    {/* AI Mentor Chat Card */}
+                    <motion.button
+                        whileHover={{ y: -4 }}
+                        onClick={handleChatAccess}
+                        className="group p-6 rounded-2xl bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-200/50 dark:border-orange-700/50 hover:border-orange-300 dark:hover:border-orange-600 transition-all text-left hover:shadow-lg"
+                    >
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="p-3 rounded-xl bg-gradient-to-br from-orange-400 to-red-400 group-hover:scale-110 transition-transform">
+                                <MessageCircle size={24} className="text-white" />
+                            </div>
+                            <ArrowRight size={20} className="text-orange-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">AI Mentor Chat</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Get instant answers and personalized learning guidance</p>
+                    </motion.button>
+                </div>
             </motion.div>
         </motion.div>
     );

@@ -6,7 +6,7 @@ from flask_cors import CORS
 
 from app_config import ALLOWED_LEVELS, init_gemini_model, normalize_difficulty, normalize_level
 from json_parser import extract_json_from_text
-from prompts import build_chat_prompt, build_quiz_prompt, build_roadmap_prompt
+from prompts import build_chat_prompt, build_quiz_prompt, build_roadmap_prompt, build_summarize_prompt
 from validators import validate_quiz_response, validate_roadmap_response
 
 load_dotenv()
@@ -130,6 +130,40 @@ def chat():
     except Exception as e:
         print(f"Error in chat: {e}")
         return jsonify({"success": False, "error": "Failed to generate response. Please try again."}), 500
+
+
+@app.route("/summarize", methods=["POST"])
+def summarize():
+    if not model:
+        return jsonify({"success": False, "error": "Gemini API not configured"}), 500
+
+    data = request.json or {}
+    content = str(data.get("content", "")).strip()
+
+    if not content:
+        return jsonify({"success": False, "error": "Content is required"}), 400
+
+    # Limit content length to prevent excessive API usage
+    max_content_length = 10000
+    if len(content) > max_content_length:
+        content = content[:max_content_length]
+
+    try:
+        generation_prompt = build_summarize_prompt(content)
+        response = model.generate_content(generation_prompt)
+        parsed_json = extract_json_from_text(response.text)
+        
+        if not parsed_json:
+            return jsonify({"success": False, "error": "Failed to parse summary response"}), 500
+
+        # Validate the response structure
+        if "title" not in parsed_json or "sections" not in parsed_json or "keyPoints" not in parsed_json:
+            return jsonify({"success": False, "error": "Invalid summary response structure"}), 500
+
+        return jsonify({"success": True, "summary": parsed_json})
+    except Exception as e:
+        print(f"Error generating summary: {e}")
+        return jsonify({"success": False, "error": "Failed to generate summary. Please try again."}), 500
 
 
 if __name__ == "__main__":

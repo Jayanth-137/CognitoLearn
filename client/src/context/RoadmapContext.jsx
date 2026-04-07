@@ -20,11 +20,6 @@ export const RoadmapProvider = ({ children }) => {
 
     // Fetch all roadmaps
     const fetchRoadmaps = useCallback(async () => {
-        if (!isAuthenticated) {
-            setRoadmaps([]);
-            return;
-        }
-
         try {
             setLoading(true);
             setError(null);
@@ -38,12 +33,17 @@ export const RoadmapProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, [isAuthenticated]);
+    }, []);
 
     // Fetch roadmaps when authenticated
     useEffect(() => {
-        fetchRoadmaps();
-    }, [fetchRoadmaps]);
+        if (isAuthenticated) {
+            fetchRoadmaps();
+        } else {
+            setRoadmaps([]);
+            setError(null);
+        }
+    }, [isAuthenticated, fetchRoadmaps]);
 
     // Delete a roadmap
     const deleteRoadmap = async (id) => {

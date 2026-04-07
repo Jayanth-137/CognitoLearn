@@ -1,22 +1,24 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const auth = require('../middleware/auth');
+const auth = require("../middleware/auth");
 
-const authRoutes = require('./auth');
-const userRoutes = require('./users');
-const quizRoutes = require('./quizzes');
-const roadmapRoutes = require('./roadmaps');
-const analyticsRoutes = require('./analytics');
-const chatRoutes = require('./chat');
+const authRoutes = require("./auth");
+const userRoutes = require("./users");
+const quizRoutes = require("./quizzes");
+const roadmapRoutes = require("./roadmaps");
+const analyticsRoutes = require("./analytics");
+const chatRoutes = require("./chat");
+const summarizeRoutes = require("./summarize");
 
 // Public routes
-router.use('/auth', authRoutes);
+router.use("/auth", authRoutes);
 
 // Protected routes (require authentication)
-router.use('/users', auth, userRoutes);
-router.use('/quizzes', auth, quizRoutes);
-router.use('/roadmaps', auth, roadmapRoutes);
-router.use('/analytics', auth, analyticsRoutes);
-router.use('/chat', auth, chatRoutes);
+router.use("/users", auth, userRoutes);
+router.use("/quizzes", auth, quizRoutes);
+router.use("/roadmaps", auth, roadmapRoutes);
+router.use("/analytics", auth, analyticsRoutes);
+router.use("/chat", auth, chatRoutes);
+router.use("/summarize", auth, summarizeRoutes);
 
 module.exports = router;

@@ -9,9 +9,10 @@ const api = axios.create({
 });
 
 // Request interceptor to attach access token
+// Checks both storages: localStorage (remembered) and sessionStorage (tab-only session)
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('accessToken');
+        const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -53,12 +54,17 @@ api.interceptors.response.use(
 
                 if (response.data.success) {
                     const { accessToken } = response.data;
-                    localStorage.setItem('accessToken', accessToken);
-                    
+                    // Store refreshed token in the same storage that held the old one
+                    if (localStorage.getItem('accessToken')) {
+                        localStorage.setItem('accessToken', accessToken);
+                    } else {
+                        sessionStorage.setItem('accessToken', accessToken);
+                    }
+
                     // Update authorization header with new token
                     api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
                     originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
-                    
+
                     return api(originalRequest);
                 }
             } catch (refreshError) {

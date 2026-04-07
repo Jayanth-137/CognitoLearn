@@ -84,9 +84,8 @@ function AuthenticatedLayout({ children }) {
 
         {/* Main Content — pushed left by right-padding when chat is open */}
         <main
-          className={`flex-1 min-h-screen overflow-x-hidden relative z-10 ${
-            sidebarCollapsed ? 'lg:ml-28' : 'lg:ml-72'
-          }`}
+          className={`flex-1 min-h-screen overflow-x-hidden relative z-10 ${sidebarCollapsed ? 'lg:ml-28' : 'lg:ml-72'
+            }`}
           style={{
             paddingRight: chatOpen ? `${PANEL_WIDTH}px` : '0px',
             transition: 'padding-right 300ms cubic-bezier(0.4,0,0.2,1), margin-left 300ms cubic-bezier(0.4,0,0.2,1)'

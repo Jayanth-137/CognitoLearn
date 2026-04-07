@@ -124,3 +124,39 @@ Your role:
 - Keep responses focused and not overly long unless the student asks for a deep dive.
 - Use bullet points, numbered lists, and headers to organize longer answers."""
 
+
+def build_summarize_prompt(content):
+    return f"""You are an expert content summarizer for an educational platform.
+
+Return exactly one JSON object. No markdown, no code fences, no extra text.
+
+Rules:
+- Output valid JSON only.
+- Follow the schema exactly.
+- Extract key concepts and important terms.
+- Create meaningful sections that logically organize the content.
+
+Schema:
+{{
+  "title": "string (title of the content)",
+  "sections": [
+    {{
+      "heading": "string",
+      "content": "string (150-200 words per section)",
+      "highlights": ["string", "string", "string"]
+    }}
+  ],
+  "keyPoints": ["string", "string", "string", "string"]
+}}
+
+Constraints:
+- Generate 3 to 5 sections.
+- Each section should have 150-200 words.
+- Highlights should be 2-4 important terms/concepts from each section.
+- Key points should be 4-6 concise, actionable bullet points.
+- Use clear, academic language appropriate for students.
+- Preserve technical accuracy and important details.
+
+CONTENT_TO_SUMMARIZE:
+<<<{content}>>>"""
+

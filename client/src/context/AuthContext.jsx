@@ -16,7 +16,8 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     const checkAuth = async () => {
-        const token = localStorage.getItem('accessToken');
+        // Check both storages: localStorage for remembered sessions, sessionStorage for tab sessions
+        const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
         if (!token) {
             setLoading(false);
             return;
@@ -29,12 +30,13 @@ export const AuthProvider = ({ children }) => {
             } else {
                 setUser(null);
                 localStorage.removeItem('accessToken');
+                sessionStorage.removeItem('accessToken');
             }
         } catch (error) {
             console.error('Auth verification failed:', error);
-            // If verification fails (e.g., invalid token), logout the user
             setUser(null);
             localStorage.removeItem('accessToken');
+            sessionStorage.removeItem('accessToken');
         } finally {
             setLoading(false);
         }
@@ -50,8 +52,15 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/login', { email, password, rememberMe });
             const { user, accessToken } = response.data;
 
-            if (rememberMe) localStorage.setItem('accessToken', accessToken);
-            else localStorage.removeItem('accessToken');
+            if (rememberMe) {
+                // Persist across browser restarts
+                localStorage.setItem('accessToken', accessToken);
+                sessionStorage.removeItem('accessToken');
+            } else {
+                // Only last for this browser tab/session
+                sessionStorage.setItem('accessToken', accessToken);
+                localStorage.removeItem('accessToken');
+            }
 
             setUser(user);
             return { success: true };
@@ -94,7 +103,8 @@ export const AuthProvider = ({ children }) => {
         } finally {
             setUser(null);
             localStorage.removeItem('accessToken');
-            // The cookie is httpOnly, so we can't delete it from JS, 
+            sessionStorage.removeItem('accessToken');
+            // The cookie is httpOnly, so we can't delete it from JS,
             // but the server call above should have cleared it.
         }
     };

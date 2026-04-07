@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, BarChart2, Settings, Plus, X, Loader2, ClipboardList } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BarChart2, Plus, X, Loader2, ClipboardList, FileText } from 'lucide-react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useRoadmaps } from '../../context/RoadmapContext';
@@ -193,6 +193,20 @@ const Sidebar = ({ isOpen, isCollapsed, onClose, toggleCollapse }) => {
                         {!isCollapsed && <span>Quizzes</span>}
                     </NavLink>
 
+                    {/* Summarizer Button */}
+                    <NavLink
+                        to="/summarizer"
+                        onClick={handleMobileClose}
+                        className={({ isActive }) => `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all font-medium
+                            ${isCollapsed ? 'justify-center px-2' : ''}
+                            ${isActive ? 'bg-indigo-50 dark:bg-slate-700 text-indigo-600 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}
+                        `}
+                        title="Smart Summarizer"
+                    >
+                        <FileText size={20} />
+                        {!isCollapsed && <span>Summarizer</span>}
+                    </NavLink>
+
                     {/* Analytics Button */}
                     <NavLink
                         to="/analytics"
@@ -206,17 +220,6 @@ const Sidebar = ({ isOpen, isCollapsed, onClose, toggleCollapse }) => {
                         <BarChart2 size={20} />
                         {!isCollapsed && <span>Analytics</span>}
                     </NavLink>
-
-                    {/* Settings Button */}
-                    <button
-                        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700
-                            ${isCollapsed ? 'justify-center px-2' : ''}
-                        `}
-                        title="Settings"
-                    >
-                        <Settings size={20} />
-                        {!isCollapsed && <span>Settings</span>}
-                    </button>
                 </div>
             </aside>
 
