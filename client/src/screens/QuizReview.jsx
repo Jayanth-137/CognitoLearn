@@ -88,6 +88,24 @@ const QuizReview = () => {
         );
     }
 
+    if (!quiz.questions || quiz.questions.length === 0) {
+        return (
+            <div className="h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4">
+                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Zap className="w-6 h-6 text-amber-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">No Questions Found</h3>
+                <p className="text-slate-500 mb-4">The questions for this attempt could not be loaded.</p>
+                <button
+                    onClick={() => navigate('/quizzes')}
+                    className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+                >
+                    Back to History
+                </button>
+            </div>
+        );
+    }
+
     const progress = ((currentQuestion + 1) / quiz.questions.length) * 100;
     const question = quiz.questions[currentQuestion];
 

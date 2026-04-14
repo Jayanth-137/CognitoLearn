@@ -254,261 +254,493 @@ exports.deleteRoadmap = async (req, res) => {
   }
 };
 
-// Mark quiz as passed for a specific topic
-exports.markQuizPassed = async (req, res) => {
-  try {
-    const { roadmapId, topicId } = req.params;
-    const { answers = [] } = req.body;
-    
-    const roadmap = await Roadmap.findOne({ _id: roadmapId, userId: req.user.userId });
-    if (!roadmap) return res.status(404).json({ error: 'Roadmap not found' });
-    
-    const topic = roadmap.topics.find(t => t.id === topicId);
-    if (!topic) return res.status(404).json({ error: 'Topic not found' });
-    
-    // Find the quiz for this topic
-    const quiz = await Quiz.findOne({ 
-      userId: req.user.userId, 
-      roadmapId, 
-      topicId 
-    });
-    
-    if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
-    await backfillQuizQuestionIds(quiz);
+// ─── BKT ADAPTIVE QUIZ ENDPOINTS ───────────────────────────────────
 
-    const normalizedQuestions = ensureQuestionIds(quiz.questions);
-    const questionById = new Map(normalizedQuestions.map((question, index) => [question.id, { question, index }]));
-    const seenQuestionIds = new Set();
+const KnowledgeState = require('../models/KnowledgeState');
+const QuizSession = require('../models/QuizSession');
+const bkt = require('../utils/bktEngine');
 
-    const processedAnswers = answers
-      .filter((answer) => typeof answer.questionId === 'string' && answer.questionId.length > 0)
-      .map((answer) => {
-      const questionEntry = questionById.get(answer.questionId);
-      const selectedAnswer = Number(answer.selectedAnswer);
-      if (!questionEntry || seenQuestionIds.has(answer.questionId)) {
-        return null;
-      }
-      seenQuestionIds.add(answer.questionId);
-      const { question, index } = questionEntry;
-      const isCorrect = Number.isInteger(selectedAnswer) &&
-        selectedAnswer >= 0 &&
-        selectedAnswer < question.options.length &&
-        selectedAnswer === question.correctAnswer;
-      return {
-        questionIndex: index,
-        questionId: answer.questionId,
-        selectedAnswer,
-        isCorrect
-      };
-    })
-      .filter(Boolean);
+// Helper: recalculate topic statuses after quiz/mastery changes
+const recalcTopicStatuses = (roadmap) => {
+  roadmap.topics.forEach((t, index) => {
+    const allCompleted = t.subtopics.every(st => st.completed);
 
-    const correctAnswers = processedAnswers.filter((answer) => answer.isCorrect).length;
-    // Score against the number of questions the user was served (not the full pool)
-    const totalQuestions = processedAnswers.length || quiz.questionsPerAttempt;
-    const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
-    const passed = score >= quiz.passingScore;
-    
-    // Create quiz attempt record
-    const attempt = await QuizAttempt.create({
-      userId: req.user.userId,
-      quizId: quiz._id,
-      answers: processedAnswers,
-      score,
-      totalQuestions,
-      correctAnswers,
-      passed
-    });
-    
-    // Update topic's quizPassed status
-    topic.quizPassed = passed;
-    
-    // Recalculate topic statuses after quiz completion
-    roadmap.topics.forEach((t, index) => {
-      const allCompleted = t.subtopics.every(st => st.completed);
-      
-      const isPreviousTopicFullyComplete = (prevTopic) => {
-        const subtopicsComplete = prevTopic.subtopics.every(st => st.completed);
-        const quizRequired = prevTopic.quizRecommended !== false;
-        const quizComplete = prevTopic.quizPassed === true;
-        return subtopicsComplete && (!quizRequired || quizComplete);
-      };
-      
-      const allPreviousFullyComplete = index === 0 || 
-        roadmap.topics.slice(0, index).every(prev => isPreviousTopicFullyComplete(prev));
-      
-      if (allCompleted && (t.quizRecommended === false || t.quizPassed)) {
-        t.status = 'completed';
-      } else if (allCompleted) {
-        t.status = 'in-progress';
-      } else if (allPreviousFullyComplete) {
-        t.status = 'in-progress';
-      } else {
-        t.status = 'locked';
-      }
-    });
-    
-    // Ensure first topic is never locked
-    if (roadmap.topics.length > 0 && roadmap.topics[0].status === 'locked') {
-      roadmap.topics[0].status = 'in-progress';
+    const isPreviousTopicFullyComplete = (prevTopic) => {
+      const subtopicsComplete = prevTopic.subtopics.every(st => st.completed);
+      const quizRequired = prevTopic.quizRecommended !== false;
+      const quizComplete = prevTopic.quizPassed === true;
+      return subtopicsComplete && (!quizRequired || quizComplete);
+    };
+
+    const allPreviousFullyComplete = index === 0 ||
+      roadmap.topics.slice(0, index).every(prev => isPreviousTopicFullyComplete(prev));
+
+    if (allCompleted && (t.quizRecommended === false || t.quizPassed)) {
+      t.status = 'completed';
+    } else if (allCompleted) {
+      t.status = 'in-progress';
+    } else if (allPreviousFullyComplete) {
+      t.status = 'in-progress';
+    } else {
+      t.status = 'locked';
     }
-    
-    await roadmap.save();
+  });
 
-    // Log activity for streak
-    try {
-      await Activity.create({
-        userId: req.user.userId,
-        type: 'quiz_completed',
-        metadata: { 
-          quizId: quiz._id, 
-          score, 
-          passed,
-          roadmapId,
-          topicId
-        }
-      });
-    } catch (err) {
-      console.error('Failed to log activity for quiz completion:', err);
-      // Don't fail the request if logging fails
-    }
-    res.json({ 
-      success: true, 
-      roadmap, 
-      attemptId: attempt._id,
-      attempt: {
-        _id: attempt._id,
-        score: attempt.score,
-        passed: attempt.passed,
-        correctAnswers: attempt.correctAnswers,
-        totalQuestions: attempt.totalQuestions,
-        answers: attempt.answers
-      },
-      message: passed ? 'Quiz passed! Next topic unlocked.' : 'Quiz not passed.' 
-    });
-  } catch (error) {
-    console.error('Mark quiz passed error:', error);
-    res.status(500).json({ error: 'Failed to update quiz status' });
+  // Ensure first topic is never locked
+  if (roadmap.topics.length > 0 && roadmap.topics[0].status === 'locked') {
+    roadmap.topics[0].status = 'in-progress';
   }
 };
 
-// Get or generate quiz for a specific topic
-exports.getOrGenerateTopicQuiz = async (req, res) => {
+// Helper: get or generate quiz for a topic (internal, not an endpoint)
+const getOrCreateQuiz = async (userId, roadmapId, topicId, topicTitle) => {
+  let quiz = await Quiz.findOne({ userId, roadmapId, topicId });
+
+  if (quiz) {
+    await backfillQuizQuestionIds(quiz);
+    return quiz;
+  }
+
+  // Generate new quiz via AI service (with retry)
+  console.log(`Generating new quiz for topic: ${topicTitle}`);
+
+  let aiResponse;
+  const attemptGenerate = () => axios.post(`${config.aiServiceUrl}/generate-quiz`, {
+    topic: topicTitle,
+    difficulty: 'medium',
+    numQuestions: 15
+  }, { timeout: 60000 }); // 60s — Gemini needs time for 15 questions
+
+  try {
+    aiResponse = await attemptGenerate();
+  } catch (firstErr) {
+    console.warn(`First quiz generation attempt failed (${firstErr.message}), retrying...`);
+    try {
+      aiResponse = await attemptGenerate();
+    } catch (secondErr) {
+      throw new Error(`Quiz generation failed after 2 attempts: ${secondErr.message}`);
+    }
+  }
+
+  if (!aiResponse.data.success || !aiResponse.data.quiz) {
+    throw new Error('Invalid AI response for quiz generation');
+  }
+
+  const quizData = aiResponse.data.quiz;
+  const normalizedQuestions = ensureQuestionIds(quizData.questions || []);
+
+  try {
+    quiz = await Quiz.create({
+      userId,
+      roadmapId,
+      topicId,
+      title: quizData.title || `${topicTitle} Quiz`,
+      topic: topicTitle,
+      description: quizData.description || `Test your knowledge of ${topicTitle}`,
+      difficulty: quizData.difficulty || 'medium',
+      passingScore: quizData.passingScore || 70,
+      questionsPerAttempt: normalizedQuestions.length,
+      questions: normalizedQuestions
+    });
+  } catch (createErr) {
+    // E11000: two concurrent requests both passed the findOne check simultaneously
+    // (common in React StrictMode dev / double fetch). Fetch the winner's document.
+    if (createErr.code === 11000) {
+      console.warn(`Concurrent quiz creation detected for topic "${topicTitle}", fetching existing quiz.`);
+      quiz = await Quiz.findOne({ userId, roadmapId, topicId });
+      if (!quiz) throw createErr; // Truly unexpected — rethrow
+      await backfillQuizQuestionIds(quiz);
+    } else {
+      throw createErr;
+    }
+  }
+
+  return quiz;
+};
+
+// GET /roadmaps/:roadmapId/topics/:topicId/quiz/status
+exports.getQuizStatus = async (req, res) => {
   try {
     const { roadmapId, topicId } = req.params;
     const userId = req.user.userId;
-    
+
     const roadmap = await Roadmap.findOne({ _id: roadmapId, userId });
     if (!roadmap) return res.status(404).json({ error: 'Roadmap not found' });
-    
+
     const topic = roadmap.topics.find(t => t.id === topicId);
     if (!topic) return res.status(404).json({ error: 'Topic not found' });
-    
-    // Check if quiz already exists for this user/roadmap/topic
-    let quiz = await Quiz.findOne({ userId, roadmapId, topicId });
-    
-    if (quiz) {
-      await backfillQuizQuestionIds(quiz);
 
-      // Get the latest attempt for this quiz
-      const latestAttempt = await QuizAttempt.findOne({ 
-        userId, 
-        quizId: quiz._id 
-      }).sort({ completedAt: -1 });
-      
-      // Count failed attempts — add 1 extra question per failure (capped at pool size)
-      const failedAttempts = await QuizAttempt.countDocuments({
-        userId,
-        quizId: quiz._id,
-        passed: false
-      });
+    // Check if quiz exists
+    const quiz = await Quiz.findOne({ userId, roadmapId, topicId });
 
-      // Sample a random subset from the question pool for this attempt
-      const baseCount = quiz.questionsPerAttempt || quiz.questions.length;
-      const questionsPerAttempt = Math.min(baseCount + failedAttempts, quiz.questions.length);
-      const sampledQuestions = sampleQuestions(quiz.questions, questionsPerAttempt);
-      
-      return res.json({ 
-        success: true, 
-        quiz: {
-          _id: quiz._id,
-          title: quiz.title,
-          topic: quiz.topic,
-          description: quiz.description,
-          difficulty: quiz.difficulty,
-          passingScore: quiz.passingScore,
-          questionsPerAttempt,
-          questions: sanitizeQuizQuestions(sampledQuestions)
-        },
+    // Get knowledge state
+    const ks = await KnowledgeState.findOne({ userId, roadmapId, topicId });
+
+    // Check for active session
+    const activeSession = await QuizSession.findOne({
+      userId, roadmapId, topicId, status: 'active'
+    });
+
+    // Get latest completed attempt
+    const latestAttempt = quiz
+      ? await QuizAttempt.findOne({ userId, quizId: quiz._id }).sort({ completedAt: -1 })
+      : null;
+
+    res.json({
+      success: true,
+      hasQuiz: !!quiz,
+      mastery: {
+        level: ks ? Math.round(ks.pL * 100) : 0,
+        mastered: ks?.mastered ?? false,
+        totalOpportunities: ks?.totalOpportunities ?? 0
+      },
+      activeSession: activeSession ? {
+        _id: activeSession._id,
+        questionsAnswered: activeSession.answers.length,
+        currentMastery: activeSession.answers.length > 0
+          ? Math.round(activeSession.answers[activeSession.answers.length - 1].pL_after * 100)
+          : Math.round((ks?.pL ?? bkt.getDefaultParams().pL0) * 100)
+      } : null,
       quizPassed: topic.quizPassed,
       latestAttempt: latestAttempt ? {
         _id: latestAttempt._id,
         score: latestAttempt.score,
-          passed: latestAttempt.passed,
-          correctAnswers: latestAttempt.correctAnswers,
-          totalQuestions: latestAttempt.totalQuestions,
-          answers: latestAttempt.answers,
-          completedAt: latestAttempt.completedAt
-        } : null,
-        isExisting: true
-      });
-    }
-    
-    // Generate new quiz using AI service
-    console.log(`Generating new quiz for topic: ${topic.title}`);
-    
-    const aiResponse = await axios.post(`${config.aiServiceUrl}/generate-quiz`, {
-      topic: topic.title,
-      difficulty: 'medium'
-    }, { timeout: 30000 });
-    
-    if (aiResponse.data.success && aiResponse.data.quiz) {
-      const quizData = aiResponse.data.quiz;
-      
-      // Create quiz document with the full question pool
-      const normalizedQuestions = ensureQuestionIds(quizData.questions || []);
-      const questionsPerAttempt = Math.max(3, Math.min(10, quizData.questionsPerAttempt || 5));
-
-      quiz = await Quiz.create({
-        userId,
-        roadmapId,
-        topicId,
-        title: quizData.title || `${topic.title} Quiz`,
-        topic: topic.title,
-        description: quizData.description || `Test your knowledge of ${topic.title}`,
-        difficulty: quizData.difficulty || 'medium',
-        passingScore: quizData.passingScore || 70,
-        questionsPerAttempt,
-        questions: normalizedQuestions
-      });
-      
-      // Sample a subset for the first attempt
-      const sampledQuestions = sampleQuestions(quiz.questions, questionsPerAttempt);
-      
-      res.json({ 
-        success: true, 
-        quiz: {
-          _id: quiz._id,
-          title: quiz.title,
-          topic: quiz.topic,
-          description: quiz.description,
-          difficulty: quiz.difficulty,
-          passingScore: quiz.passingScore,
-          questionsPerAttempt,
-          questions: sanitizeQuizQuestions(sampledQuestions)
-        },
-        quizPassed: topic.quizPassed,
-        latestAttempt: null,
-        isExisting: false
-      });
-    } else {
-      throw new Error('Invalid AI response');
-    }
-  } catch (error) {
-    console.error('Get/Generate topic quiz error:', error);
-    res.status(500).json({ 
-      error: 'Failed to get or generate quiz',
-      details: error.message 
+        passed: latestAttempt.passed,
+        correctAnswers: latestAttempt.correctAnswers,
+        totalQuestions: latestAttempt.totalQuestions,
+        completedAt: latestAttempt.completedAt
+      } : null
     });
+  } catch (error) {
+    console.error('Get quiz status error:', error);
+    res.status(500).json({ error: 'Failed to get quiz status' });
+  }
+};
+
+// POST /roadmaps/:roadmapId/topics/:topicId/quiz/start
+exports.startQuizSession = async (req, res) => {
+  try {
+    const { roadmapId, topicId } = req.params;
+    const userId = req.user.userId;
+
+    const roadmap = await Roadmap.findOne({ _id: roadmapId, userId });
+    if (!roadmap) return res.status(404).json({ error: 'Roadmap not found' });
+
+    const topic = roadmap.topics.find(t => t.id === topicId);
+    if (!topic) return res.status(404).json({ error: 'Topic not found' });
+
+    // Check for existing active session — resume it
+    const existingSession = await QuizSession.findOne({
+      userId, roadmapId, topicId, status: 'active'
+    });
+
+    if (existingSession) {
+      const quiz = await Quiz.findById(existingSession.quizId);
+      if (quiz) {
+        await backfillQuizQuestionIds(quiz);
+
+        // Find the next question to serve
+        const nextQuestionId = existingSession.questionQueue[existingSession.currentIndex];
+        const nextQuestion = quiz.questions.find(q => (q.id || q._id?.toString()) === nextQuestionId);
+
+        if (nextQuestion) {
+          const ks = await KnowledgeState.findOne({ userId, roadmapId, topicId });
+          const currentPL = existingSession.answers.length > 0
+            ? existingSession.answers[existingSession.answers.length - 1].pL_after
+            : (ks?.pL ?? bkt.getDefaultParams().pL0);
+
+          return res.json({
+            success: true,
+            resumed: true,
+            session: {
+              _id: existingSession._id,
+              totalQuestionsInPool: existingSession.questionQueue.length,
+              questionNumber: existingSession.currentIndex + 1,
+              questionsAnswered: existingSession.answers.length,
+              currentMastery: Math.round(currentPL * 100),
+              masteryThreshold: 90
+            },
+            question: {
+              id: nextQuestion.id || nextQuestion._id?.toString(),
+              question: nextQuestion.question,
+              options: nextQuestion.options,
+              questionNumber: existingSession.currentIndex + 1
+            }
+          });
+        }
+      }
+      // If session is broken, abandon it and create new
+      existingSession.status = 'abandoned';
+      existingSession.completedAt = new Date();
+      await existingSession.save();
+    }
+
+    // Get or generate quiz
+    const quiz = await getOrCreateQuiz(userId, roadmapId, topicId, topic.title);
+
+    // Load or create knowledge state
+    let ks = await KnowledgeState.findOne({ userId, roadmapId, topicId });
+    if (!ks) {
+      const defaults = bkt.getDefaultParams();
+      ks = new KnowledgeState({
+        userId, roadmapId, topicId,
+        pL: defaults.pL0,
+        params: { pL0: defaults.pL0, pT: defaults.pT, pG: defaults.pG, pS: defaults.pS },
+        history: []
+      });
+      await ks.save();
+    }
+
+    // If already mastered, inform the client
+    if (ks.mastered) {
+      return res.json({
+        success: true,
+        alreadyMastered: true,
+        mastery: {
+          level: Math.round(ks.pL * 100),
+          mastered: true,
+          totalOpportunities: ks.totalOpportunities
+        }
+      });
+    }
+
+    // Shuffle question pool to create queue
+    const allQuestions = ensureQuestionIds(quiz.questions);
+    const shuffled = sampleQuestions(allQuestions, allQuestions.length);
+    const questionQueue = shuffled.map(q => q.id);
+
+    // Create new session
+    const session = await QuizSession.create({
+      userId,
+      roadmapId,
+      topicId,
+      quizId: quiz._id,
+      questionQueue,
+      currentIndex: 0,
+      answers: [],
+      pL_start: ks.pL,
+      startedAt: new Date()
+    });
+
+    // Return first question (sanitized — no correctAnswer)
+    const firstQuestion = shuffled[0];
+    res.json({
+      success: true,
+      resumed: false,
+      session: {
+        _id: session._id,
+        totalQuestionsInPool: questionQueue.length,
+        questionNumber: 1,
+        questionsAnswered: 0,
+        currentMastery: Math.round(ks.pL * 100),
+        masteryThreshold: 90
+      },
+      question: {
+        id: firstQuestion.id,
+        question: firstQuestion.question,
+        options: firstQuestion.options,
+        questionNumber: 1
+      }
+    });
+  } catch (error) {
+    console.error('Start quiz session error:', error);
+    res.status(500).json({ error: 'Failed to start quiz session', details: error.message });
+  }
+};
+
+// POST /roadmaps/:roadmapId/topics/:topicId/quiz/answer
+exports.answerQuestion = async (req, res) => {
+  try {
+    const { roadmapId, topicId } = req.params;
+    const { sessionId, questionId, selectedAnswer } = req.body;
+    const userId = req.user.userId;
+
+    if (!sessionId || !questionId || selectedAnswer === undefined) {
+      return res.status(400).json({ error: 'sessionId, questionId, and selectedAnswer are required' });
+    }
+
+    // Load session
+    const session = await QuizSession.findOne({ _id: sessionId, userId, status: 'active' });
+    if (!session) return res.status(404).json({ error: 'Active quiz session not found' });
+
+    // Validate the question matches the expected next question
+    const expectedQuestionId = session.questionQueue[session.currentIndex];
+    if (questionId !== expectedQuestionId) {
+      return res.status(400).json({ error: 'Question ID does not match expected question' });
+    }
+
+    // Load quiz and find the question
+    const quiz = await Quiz.findById(session.quizId);
+    if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+    await backfillQuizQuestionIds(quiz);
+
+    const question = quiz.questions.find(q => (q.id || q._id?.toString()) === questionId);
+    if (!question) return res.status(404).json({ error: 'Question not found in quiz pool' });
+
+    // Grade the answer
+    const selected = Number(selectedAnswer);
+    const isCorrect = Number.isInteger(selected) &&
+      selected >= 0 &&
+      selected < question.options.length &&
+      selected === question.correctAnswer;
+
+    // Update KnowledgeState with BKT
+    let ks = await KnowledgeState.findOne({ userId, roadmapId, topicId });
+    if (!ks) {
+      const defaults = bkt.getDefaultParams();
+      ks = new KnowledgeState({
+        userId, roadmapId, topicId,
+        pL: defaults.pL0,
+        params: { pL0: defaults.pL0, pT: defaults.pT, pG: defaults.pG, pS: defaults.pS },
+        history: []
+      });
+    }
+
+    // BKT single-step update
+    const newPL = bkt.updateMastery(ks.pL, isCorrect, ks.params);
+
+    // Append to knowledge state history
+    ks.history.push({
+      correct: isCorrect,
+      questionId,
+      sessionId: session._id,
+      timestamp: new Date()
+    });
+    ks.pL = newPL;
+    ks.totalOpportunities = ks.history.length;
+    ks.correctCount = ks.history.filter(h => h.correct).length;
+    ks.mastered = bkt.isMastered(newPL, ks.params.masteryThreshold || bkt.DEFAULTS.masteryThreshold);
+    await ks.save();
+
+    // Record answer in session
+    session.answers.push({
+      questionId,
+      selectedAnswer: selected,
+      isCorrect,
+      pL_after: newPL,
+      answeredAt: new Date()
+    });
+
+    const questionsAnswered = session.answers.length;
+    const questionsRemaining = session.questionQueue.length - session.currentIndex - 1;
+    const mastered = bkt.shouldStopQuiz(newPL, questionsAnswered, {
+      masteryThreshold: bkt.DEFAULTS.masteryThreshold,
+      minQuestions: bkt.DEFAULTS.minQuestions
+    });
+
+    // Build feedback response
+    const feedback = {
+      isCorrect,
+      correctAnswer: question.correctAnswer,
+      explanation: question.explanation || null
+    };
+
+    const masteryInfo = {
+      level: Math.round(newPL * 100),
+      mastered,
+      questionsAnswered,
+      questionsRemaining: mastered ? 0 : questionsRemaining
+    };
+
+    // Check if quiz should end
+    const quizComplete = mastered || questionsRemaining <= 0;
+
+    if (quizComplete) {
+      // ─── COMPLETE THE SESSION ───
+      const correctAnswers = session.answers.filter(a => a.isCorrect).length;
+      const totalQuestions = session.answers.length;
+      const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+
+      session.status = mastered ? 'completed_mastered' : 'completed_not_mastered';
+      session.pL_final = newPL;
+      session.mastered = mastered;
+      session.totalQuestions = totalQuestions;
+      session.correctAnswers = correctAnswers;
+      session.score = score;
+      session.completedAt = new Date();
+      session.currentIndex = session.currentIndex + 1;
+      await session.save();
+
+      // Update roadmap topic
+      const roadmap = await Roadmap.findOne({ _id: roadmapId, userId });
+      if (roadmap) {
+        const topic = roadmap.topics.find(t => t.id === topicId);
+        if (topic) {
+          topic.quizPassed = mastered;
+          topic.masteryLevel = newPL;
+          recalcTopicStatuses(roadmap);
+          await roadmap.save();
+        }
+      }
+
+      // Create QuizAttempt record (for history/review compatibility)
+      const attempt = await QuizAttempt.create({
+        userId,
+        quizId: quiz._id,
+        answers: session.answers.map(a => ({
+          questionId: a.questionId,
+          selectedAnswer: a.selectedAnswer,
+          isCorrect: a.isCorrect
+        })),
+        score,
+        totalQuestions,
+        correctAnswers,
+        passed: mastered
+      });
+
+      // Log activity for streak tracking
+      try {
+        await Activity.create({
+          userId,
+          type: 'quiz_completed',
+          metadata: { quizId: quiz._id, score, passed: mastered, roadmapId, topicId }
+        });
+      } catch (err) {
+        console.error('Failed to log activity for quiz completion:', err);
+      }
+
+      return res.json({
+        success: true,
+        feedback,
+        mastery: masteryInfo,
+        nextQuestion: null,
+        quizComplete: true,
+        result: {
+          sessionId: session._id,
+          attemptId: attempt._id,
+          mastered,
+          score,
+          correctAnswers,
+          totalQuestions,
+          masteryLevel: Math.round(newPL * 100)
+        },
+        roadmap: roadmap || null
+      });
+    }
+
+    // ─── SERVE NEXT QUESTION ───
+    session.currentIndex = session.currentIndex + 1;
+    await session.save();
+
+    const nextQuestionId = session.questionQueue[session.currentIndex];
+    const nextQuestionData = quiz.questions.find(q => (q.id || q._id?.toString()) === nextQuestionId);
+
+    const nextQuestion = nextQuestionData ? {
+      id: nextQuestionData.id || nextQuestionData._id?.toString(),
+      question: nextQuestionData.question,
+      options: nextQuestionData.options,
+      questionNumber: session.currentIndex + 1
+    } : null;
+
+    res.json({
+      success: true,
+      feedback,
+      mastery: masteryInfo,
+      nextQuestion,
+      quizComplete: false
+    });
+  } catch (error) {
+    console.error('Answer question error:', error);
+    res.status(500).json({ error: 'Failed to process answer', details: error.message });
   }
 };

@@ -43,8 +43,8 @@ USER_INPUT_TOPIC: <<<{prompt}>>>
 USER_LEVEL: <<<{level_title}>>>"""
 
 
-def build_quiz_prompt(topic, difficulty):
-    return f"""You are an expert quiz generator.
+def build_quiz_prompt(topic, difficulty, num_questions=15):
+    return f"""You are an expert quiz generator for an adaptive learning platform.
 
 Return exactly one JSON object. No markdown, no code fences, no extra text.
 
@@ -59,7 +59,6 @@ Schema:
   "description": "string",
   "topic": "string",
   "difficulty": "easy|medium|hard",
-  "questionsPerAttempt": 3,
   "questions": [
     {{
       "question": "string",
@@ -72,15 +71,17 @@ Schema:
 }}
 
 Constraints:
-- questionsPerAttempt must be between 3 and 10.
-- Total question pool size must be ceil(2.5 * questionsPerAttempt).
+- Generate EXACTLY {num_questions} questions. This is required — do not generate fewer.
 - Questions must be unique and directly relevant to the topic.
+- Vary difficulty slightly across questions (not all the same hardness).
 - Exactly 4 options per question.
-- correctAnswer must be integer 0 to 3.
-- explanation length: 10 to 30 words.
+- correctAnswer must be integer 0 to 3 (index of the correct option).
+- explanation: one clear sentence (15 to 40 words) explaining WHY the answer is correct.
+- Do NOT include a 'questionsPerAttempt' field.
 
 USER_TOPIC: <<<{topic}>>>
-USER_DIFFICULTY: <<<{difficulty}>>>"""
+USER_DIFFICULTY: <<<{difficulty}>>>
+NUM_QUESTIONS: {num_questions}"""
 
 
 def build_chat_prompt(roadmap_context):

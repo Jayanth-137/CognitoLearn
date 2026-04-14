@@ -1,6 +1,7 @@
 const Activity = require('../models/Activity');
 const QuizAttempt = require('../models/QuizAttempt');
 const Roadmap = require('../models/Roadmap');
+const KnowledgeState = require('../models/KnowledgeState');
 
 // Helper to calculate streaks
 const calculateStreaks = (activities) => {
@@ -153,5 +154,32 @@ exports.getStreaks = async (req, res) => {
     } catch (error) {
         console.error('Get streaks error:', error);
          res.status(500).json({ error: 'Failed to get streaks' });
+    }
+};
+
+exports.getMasteryOverview = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const states = await KnowledgeState.find({ userId }).lean();
+
+        const overview = {
+            totalTopicsTracked: states.length,
+            masteredTopics: states.filter(s => s.mastered).length,
+            averageMastery: states.length > 0
+                ? Math.round(states.reduce((sum, s) => sum + s.pL, 0) / states.length * 100)
+                : 0,
+            topicStates: states.map(s => ({
+                roadmapId: s.roadmapId,
+                topicId: s.topicId,
+                masteryLevel: Math.round(s.pL * 100),
+                mastered: s.mastered,
+                totalOpportunities: s.totalOpportunities
+            }))
+        };
+
+        res.json({ success: true, mastery: overview });
+    } catch (error) {
+        console.error('Get mastery overview error:', error);
+        res.status(500).json({ error: 'Failed to get mastery overview' });
     }
 };

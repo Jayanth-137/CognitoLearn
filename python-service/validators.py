@@ -77,7 +77,6 @@ def validate_quiz_response(parsed_json):
     description = parsed_json.get("description")
     topic = parsed_json.get("topic")
     difficulty = parsed_json.get("difficulty")
-    qpa = parsed_json.get("questionsPerAttempt")
     questions = parsed_json.get("questions")
 
     if not _is_non_empty_string(title):
@@ -89,17 +88,12 @@ def validate_quiz_response(parsed_json):
     if not isinstance(difficulty, str) or difficulty.lower() not in ALLOWED_DIFFICULTIES:
         return None, "Quiz difficulty must be one of easy|medium|hard"
 
-    try:
-        qpa = int(qpa)
-    except (TypeError, ValueError):
-        return None, "questionsPerAttempt must be an integer"
-    if qpa < 3 or qpa > 10:
-        return None, "questionsPerAttempt must be between 3 and 10"
-
     if not isinstance(questions, list):
         return None, "questions must be an array"
-    if len(questions) < qpa:
-        return None, "questions array has fewer items than questionsPerAttempt"
+    if len(questions) < 5:
+        return None, f"Quiz must have at least 5 questions for adaptive assessment (got {len(questions)})"
+    if len(questions) > 20:
+        return None, f"Quiz must have at most 20 questions (got {len(questions)})"
 
     normalized_questions = []
     for idx, q in enumerate(questions):
@@ -144,7 +138,6 @@ def validate_quiz_response(parsed_json):
         "description": description.strip(),
         "topic": topic.strip(),
         "difficulty": difficulty.lower(),
-        "questionsPerAttempt": qpa,
         "questions": normalized_questions,
     }
     return normalized, None

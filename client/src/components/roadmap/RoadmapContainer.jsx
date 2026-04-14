@@ -1,4 +1,4 @@
-import { Check, Lock, MessageCircle, Play, HelpCircle } from 'lucide-react';
+import { Check, Lock, MessageCircle, HelpCircle, CheckCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Subtopic Node Component (smaller nodes branching from main topic)
@@ -9,40 +9,50 @@ const SubtopicNode = ({ subtopic, onToggle, isLocked, subtopicNumber }) => {
         <div
             onClick={() => !isLocked && onToggle?.()}
             className={`
-                flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-all cursor-pointer text-sm
+                group flex items-center gap-3 px-4 py-2.5 rounded-xl border-2 transition-all duration-300 cursor-pointer text-sm
                 ${isLocked
-                    ? 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 opacity-50 cursor-not-allowed'
+                    ? 'border-transparent bg-slate-50/50 dark:bg-slate-800/20 text-slate-400 opacity-70 grayscale cursor-not-allowed'
                     : isCompleted
-                        ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-700 hover:border-green-400'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md'
+                        ? 'border-emerald-200 bg-emerald-50/80 dark:bg-emerald-900/10 dark:border-emerald-800 hover:border-emerald-400 shadow-sm shadow-emerald-500/5'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-lg shadow-indigo-500/10'
                 }
             `}
         >
-            {/* Number Badge */}
+            {/* Number/Check Badge */}
             <span className={`
-                flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                relative flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300
                 ${isLocked
                     ? 'bg-slate-200 dark:bg-slate-700 text-slate-400'
                     : isCompleted
-                        ? 'bg-green-500 text-white'
-                        : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400'
+                        ? 'bg-emerald-500 text-white shadow-inner scale-105'
+                        : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white group-hover:shadow-md'
                 }
             `}>
-                {subtopicNumber}
+                {isCompleted ? <Check size={14} strokeWidth={4} /> : subtopicNumber}
+                {/* Ring for active items */}
+                {!isLocked && !isCompleted && (
+                    <div className="absolute inset-0 rounded-full border-2 border-indigo-200 dark:border-indigo-700/50 scale-125 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none" />
+                )}
             </span>
 
-            <span className={`font-medium ${isLocked ? 'text-slate-400' :
-                isCompleted ? 'text-green-700 dark:text-green-400 line-through' :
-                    'text-slate-700 dark:text-slate-200'
+            <span className={`font-semibold transition-colors duration-300 ${isLocked ? 'text-slate-400' :
+                isCompleted ? 'text-emerald-800 dark:text-emerald-300 opacity-90' :
+                    'text-slate-700 dark:text-slate-200 group-hover:text-indigo-900 dark:group-hover:text-indigo-100'
                 }`}>
                 {subtopic.title}
             </span>
+            
+            {isCompleted && (
+                <span className="hidden sm:block ml-auto text-[10px] uppercase tracking-widest font-black text-emerald-500/60 transition-opacity">
+                    Done
+                </span>
+            )}
         </div>
     );
 };
 
 // Main Topic Card Component - Responsive
-const TopicCard = ({ topic, topicNumber, onSubtopicToggle, onChatTopic, showSubtopics = false }) => {
+const TopicCard = ({ topic, topicNumber, onSubtopicToggle, onChatTopic, onMarkAllDone, showSubtopics = false }) => {
     const navigate = useNavigate();
 
     const isLocked = topic.status === 'locked';
@@ -52,8 +62,11 @@ const TopicCard = ({ topic, topicNumber, onSubtopicToggle, onChatTopic, showSubt
     const completedCount = topic.subtopics?.filter(s => s.completed).length || 0;
     const totalCount = topic.subtopics?.length || 0;
 
-    const handleStartLearning = () => {
-        if (!isLocked) navigate(`/learn/${topic.id}`);
+    const allSubtopicsDone = topic.subtopics?.length > 0 && topic.subtopics.every(s => s.completed);
+
+    const handleMarkDone = () => {
+        if (isLocked) return;
+        onMarkAllDone?.(topic.id);
     };
 
     const handleChat = () => {
@@ -122,73 +135,136 @@ const TopicCard = ({ topic, topicNumber, onSubtopicToggle, onChatTopic, showSubt
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
+                    {/* Mark Done — subtle outlined style */}
                     <button
-                        onClick={handleStartLearning}
-                        disabled={isLocked}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all
+                        onClick={handleMarkDone}
+                        disabled={isLocked || allSubtopicsDone}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold border transition-all
                             ${isLocked
-                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-700'
-                                : isCompleted
-                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/25 hover:shadow-lg'
+                                ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed dark:border-slate-700 dark:bg-slate-800/50'
+                                : allSubtopicsDone
+                                    ? 'border-green-300 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-900/20 dark:text-green-400 cursor-default'
+                                    : 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-900/20 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:scale-[1.02] active:scale-[0.98]'
                             }
                         `}
+                        title={allSubtopicsDone ? 'All subtopics completed' : 'Mark all subtopics as done'}
                     >
-                        {isCompleted ? <><Check size={16} /> Review</> : <><Play size={16} /> Start</>}
+                        {allSubtopicsDone
+                            ? <><CheckCheck size={16} /> Completed</>
+                            : <><Check size={16} /> Mark Done</>
+                        }
                     </button>
-                    <button
-                        onClick={handleChat}
-                        disabled={isLocked}
-                        className={`p-2.5 rounded-xl transition-all
-                            ${isLocked
-                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-700'
-                                : 'bg-slate-100 text-slate-600 hover:bg-indigo-100 hover:text-indigo-600 dark:bg-slate-700 dark:text-slate-300'
-                            }
-                        `}
-                        title="Chat with AI"
-                    >
-                        <MessageCircle size={18} />
-                    </button>
+
+                    {/* Ask AI — gradient border via wrapper trick */}
+                    {isLocked ? (
+                        <button
+                            disabled
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-full text-sm font-semibold border border-slate-200 text-slate-400 cursor-not-allowed dark:border-slate-700"
+                        >
+                            <MessageCircle size={15} />
+                            <span>Ask AI</span>
+                        </button>
+                    ) : (
+                        <div className="flex-1 p-[1.5px] rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                            <button
+                                onClick={handleChat}
+                                className="w-full flex items-center justify-center gap-1.5 py-[9px] rounded-full text-sm font-semibold bg-white dark:bg-slate-800"
+                                title="Ask AI about this topic"
+                            >
+                                <MessageCircle size={15} className="text-indigo-500" />
+                                <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+                                    Ask AI
+                                </span>
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
 
-// Quiz Milestone Component
+// Premium Quiz Milestone Component with BKT mastery ring
 // status: 'locked' (topic not completed), 'available' (topic completed, ready for quiz), 'completed' (quiz passed)
-const QuizMilestone = ({ roadmapId, topicId, topicTitle, status }) => {
+const QuizMilestone = ({ roadmapId, topicId, topicTitle, status, masteryLevel = 0 }) => {
     const navigate = useNavigate();
     const isLocked = status === 'locked';
     const isAvailable = status === 'available';
     const isCompleted = status === 'completed';
+    const masteryPct = Math.round((masteryLevel || 0) * 100);
+    const hasPartialMastery = masteryPct > 0 && !isCompleted;
+
+    // Mini SVG mastery ring perfectly sized to wrap the inner button
+    const MiniMasteryRing = ({ pct, size = 68 }) => {
+        const strokeWidth = 4;
+        const radius = (size - strokeWidth) / 2;
+        const circumference = radius * 2 * Math.PI;
+        const offset = circumference - (pct / 100) * circumference;
+        // Replaced violet with a vivid cyan/blue for better contrast
+        const color = pct >= 60 ? '#f59e0b' : '#0ea5e9'; 
+        return (
+            <svg className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transform -rotate-90 pointer-events-none drop-shadow-md z-20" width={size} height={size}>
+                <circle strokeWidth={strokeWidth} stroke="rgba(100,116,139,0.15)" fill="transparent" r={radius} cx={size / 2} cy={size / 2} />
+                <circle strokeWidth={strokeWidth} strokeDasharray={circumference} strokeDashoffset={offset}
+                    strokeLinecap="round" stroke={color} fill="transparent" r={radius} cx={size / 2} cy={size / 2}
+                    style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+            </svg>
+        );
+    };
 
     return (
-        <div className="relative py-1">
-            {/* Glow effect for available quizzes */}
+        <div className="relative py-2 flex flex-col items-center group">
+            {/* Ambient Background Glow for available items */}
             {isAvailable && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-amber-400/30 animate-ping" />
-                </div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-amber-500/20 rounded-full blur-xl animate-pulse" />
             )}
+            
             <button
                 onClick={() => !isLocked && navigate(`/quiz/${roadmapId}/${topicId}`, { state: { topicTitle } })}
                 disabled={isLocked}
-                title={isLocked ? 'Complete the topic first' : `Take quiz for ${topicTitle}`}
-                className={`group relative w-12 h-12 md:w-14 md:h-14 rounded-full border-4 flex items-center justify-center transition-all shadow-lg z-10
-                    ${isCompleted ? 'border-green-400 bg-green-500 text-white shadow-green-500/40' : ''}
-                    ${isAvailable ? 'border-amber-400 bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-amber-500/50 ring-4 ring-amber-300/50 dark:ring-amber-500/30' : ''}
-                    ${isLocked ? 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-not-allowed' : ''}
-                    ${!isLocked ? 'hover:scale-110 cursor-pointer' : ''}
+                title={isLocked ? 'Complete the topic first' : `Take quiz for ${topicTitle}${hasPartialMastery ? ` (${masteryPct}% mastery)` : ''}`}
+                className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300
+                    ${isCompleted ? 'bg-gradient-to-tr from-emerald-400 to-emerald-500 text-white shadow-lg shadow-emerald-500/30 ring-4 ring-emerald-100 dark:ring-emerald-900/30' : ''}
+                    ${isAvailable ? 'bg-gradient-to-tr from-amber-400 to-orange-500 text-white shadow-xl shadow-amber-500/40 hover:scale-110 active:scale-95 hover:shadow-orange-500/50' : ''}
+                    ${isLocked ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-2 border-slate-200 dark:border-slate-700 cursor-not-allowed grayscale opacity-70' : ''}
                 `}
             >
-                {isCompleted ? <Check size={20} strokeWidth={3} /> : isLocked ? <Lock size={16} /> : <HelpCircle size={22} />}
+                {/* Mastery ring overlay for in-progress perfectly wrapping the 48px standard button (48 + padding = 68px) */}
+                {hasPartialMastery && !isLocked && <MiniMasteryRing pct={masteryPct} size={60} />}
+                
+                {isCompleted ? <Check size={24} strokeWidth={3} className="drop-shadow-sm" /> : isLocked ? <Lock size={20} /> : <HelpCircle size={22} className="drop-shadow-sm" />}
+                
+                {/* Embedded pulse ring inside the button to avoid clipping */}
+                {isAvailable && !hasPartialMastery && (
+                    <div className="absolute inset-0 rounded-full border-2 border-white opacity-0 animate-ping" />
+                )}
             </button>
-            {/* Label on the side - clean glass style */}
+            
+            {/* Elegant Floating Labels */}
             {isAvailable && (
-                <span className="absolute left-full ml-4 top-1/2 -translate-y-1/2 whitespace-nowrap text-sm font-semibold text-amber-500 dark:text-amber-400">
-                    Take Quiz
-                </span>
+                <>
+                    {/* Left side: Mastery percentage */}
+                    {hasPartialMastery && (
+                        <div className="absolute right-[calc(100%+12px)] top-1/2 -translate-y-1/2 flex items-center z-20 pointer-events-none transition-all duration-300 group-hover:-translate-x-1">
+                            <div className="px-3 py-1.5 rounded-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-cyan-200 dark:border-cyan-700/50 shadow-lg shadow-cyan-500/10 order-1">
+                                <span className="whitespace-nowrap text-xs font-bold bg-gradient-to-r from-cyan-600 to-blue-500 dark:from-cyan-400 dark:to-blue-400 bg-clip-text text-transparent tracking-wide">
+                                    {masteryPct}% Mastery
+                                </span>
+                            </div>
+                            <div className="w-2 h-0.5 bg-cyan-400 dark:bg-cyan-500/60 rounded-full ml-1 opacity-50 order-2" />
+                        </div>
+                    )}
+
+                    {/* Right side: Action Prompt */}
+                    <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 flex items-center z-20 pointer-events-none transition-all duration-300 group-hover:translate-x-1">
+                        <div className="w-2 h-0.5 bg-amber-400 dark:bg-amber-500/60 rounded-full mr-1 opacity-50" />
+                        <div className="px-3 py-1.5 rounded-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-amber-200 dark:border-amber-700/50 shadow-lg shadow-amber-500/10">
+                            <span className="whitespace-nowrap text-xs font-bold bg-gradient-to-r from-amber-600 to-orange-500 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent tracking-wide">
+                                {hasPartialMastery ? 'Retake Quiz' : 'Take Quiz'}
+                            </span>
+                        </div>
+                    </div>
+                </>
             )}
         </div>
     );
@@ -232,6 +308,7 @@ const VerticalConnector = ({ topic, roadmapId, isLast }) => {
                         topicId={topic.id}
                         topicTitle={topic.title}
                         status={quizStatus}
+                        masteryLevel={topic.masteryLevel}
                     />
                     {/* Bottom connector line - hide if last */}
                     {!isLast && <div className={`w-1 h-6 md:h-8 rounded-full ${bottomLineColor}`} />}
@@ -258,7 +335,7 @@ const HorizontalConnector = ({ status }) => {
 };
 
 // Main Roadmap Container - Responsive Layout
-const RoadmapContainer = ({ data, roadmapId, onSubtopicToggle, onChatTopic }) => {
+const RoadmapContainer = ({ data, roadmapId, onSubtopicToggle, onMarkAllDone, onChatTopic }) => {
     if (!data || data.length === 0) {
         return (
             <div className="text-center py-12 text-slate-500">
@@ -283,6 +360,7 @@ const RoadmapContainer = ({ data, roadmapId, onSubtopicToggle, onChatTopic }) =>
                                     topic={topic}
                                     topicNumber={index + 1}
                                     onSubtopicToggle={onSubtopicToggle}
+                                    onMarkAllDone={onMarkAllDone}
                                     onChatTopic={onChatTopic}
                                     showSubtopics={true}
                                 />
@@ -310,6 +388,7 @@ const RoadmapContainer = ({ data, roadmapId, onSubtopicToggle, onChatTopic }) =>
                                     topic={topic}
                                     topicNumber={index + 1}
                                     onSubtopicToggle={onSubtopicToggle}
+                                    onMarkAllDone={onMarkAllDone}
                                     onChatTopic={onChatTopic}
                                     showSubtopics={false}
                                 />

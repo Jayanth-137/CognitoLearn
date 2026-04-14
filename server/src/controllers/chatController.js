@@ -22,6 +22,8 @@ const buildRoadmapContext = (roadmap) => {
       title: t.title,
       description: t.description,
       status: t.status,
+      masteryLevel: t.masteryLevel ?? 0,
+      quizPassed: t.quizPassed,
       subtopics: t.subtopics?.map(s => s.title) || [],
       completedSubtopics: t.subtopics?.filter(s => s.completed).map(s => s.title) || []
     }))

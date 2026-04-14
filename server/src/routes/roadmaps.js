@@ -7,7 +7,10 @@ router.get('/', roadmapController.getUserRoadmaps);
 router.get('/:id', roadmapController.getRoadmapById);
 router.put('/:id', roadmapController.updateRoadmap);
 router.delete('/:id', roadmapController.deleteRoadmap);
-router.post('/:roadmapId/topics/:topicId/quiz-passed', roadmapController.markQuizPassed);
-router.get('/:roadmapId/topics/:topicId/quiz', roadmapController.getOrGenerateTopicQuiz);
+
+// BKT Adaptive Quiz Routes (Dynamic Sequential Serving)
+router.get('/:roadmapId/topics/:topicId/quiz/status', roadmapController.getQuizStatus);
+router.post('/:roadmapId/topics/:topicId/quiz/start', roadmapController.startQuizSession);
+router.post('/:roadmapId/topics/:topicId/quiz/answer', roadmapController.answerQuestion);
 
 module.exports = router;

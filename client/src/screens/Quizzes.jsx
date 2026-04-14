@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ClipboardList, Trophy, Target, Calendar, Clock, ChevronRight, Loader2, AlertCircle, Sparkles } from 'lucide-react';
+import { ClipboardList, Trophy, Target, Calendar, Clock, ChevronRight, Loader2, AlertCircle, Sparkles, Brain } from 'lucide-react';
 import api from '../api/client';
 import CircularProgress from '../components/ui/CircularProgress';
 
@@ -199,9 +199,12 @@ const Quizzes = () => {
                                                 </h3>
                                                 {attempt.passed && (
                                                     <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
-                                                        PASSED
+                                                        MASTERED
                                                     </span>
                                                 )}
+                                                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100/80 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/50">
+                                                    <Brain size={9} /> ADAPTIVE
+                                                </span>
                                             </div>
 
                                             <div className="flex items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">

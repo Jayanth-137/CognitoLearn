@@ -270,18 +270,18 @@ const ChatPanel = ({ isOpen, onClose, roadmapId, roadmap, initialTopic }) => {
                             {loading ? (
                                 <div className="flex-1 flex items-center justify-center">
                                     <div className="text-center">
-                                        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mx-auto mb-3">
+                                        {/* <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mx-auto mb-3">
                                             <Sparkles size={20} className="text-indigo-500 animate-pulse" />
-                                        </div>
+                                        </div> */}
                                         <p className="text-sm text-slate-500 dark:text-slate-400">Loading chat...</p>
                                     </div>
                                 </div>
                             ) : messages.length === 0 && !isTyping ? (
                                 // Empty state
                                 <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
-                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white mb-4 shadow-xl shadow-indigo-500/30">
+                                    {/* <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white mb-4 shadow-xl shadow-indigo-500/30">
                                         <Sparkles size={28} />
-                                    </div>
+                                    </div> */}
                                     <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">
                                         Hi, I'm your AI Mentor!
                                     </h3>

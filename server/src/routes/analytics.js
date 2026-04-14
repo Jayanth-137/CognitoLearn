@@ -6,5 +6,6 @@ router.get('/dashboard', analyticsController.getDashboard);
 router.get('/progress', analyticsController.getProgress);
 router.post('/activity', analyticsController.logActivity);
 router.get('/streaks', analyticsController.getStreaks);
+router.get('/mastery', analyticsController.getMasteryOverview);
 
 module.exports = router;

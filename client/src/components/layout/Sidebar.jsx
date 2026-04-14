@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, BarChart2, Plus, X, Loader2, ClipboardList, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChartLine, Plus, X, Loader2, ClipboardList, FileText } from 'lucide-react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useRoadmaps } from '../../context/RoadmapContext';
@@ -217,7 +217,7 @@ const Sidebar = ({ isOpen, isCollapsed, onClose, toggleCollapse }) => {
                         `}
                         title="Analytics"
                     >
-                        <BarChart2 size={20} />
+                        <ChartLine size={20} />
                         {!isCollapsed && <span>Analytics</span>}
                     </NavLink>
                 </div>

@@ -104,8 +104,12 @@ exports.getAttemptById = async (req, res) => {
       if (answeredQuestionIds.size > 0) {
         const attemptObj = attempt.toObject();
         attemptObj.quizId.questions = attemptObj.quizId.questions.filter(
-          q => answeredQuestionIds.has(q.id)
+          q => answeredQuestionIds.has(q.id) || answeredQuestionIds.has(q._id?.toString())
         );
+        // Safety: if filter wiped everything (id mismatch), keep all questions
+        if (attemptObj.quizId.questions.length === 0) {
+          attemptObj.quizId.questions = attempt.toObject().quizId.questions;
+        }
         return res.json({ success: true, attempt: attemptObj });
       }
     }

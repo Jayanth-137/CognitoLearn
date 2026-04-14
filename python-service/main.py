@@ -65,12 +65,14 @@ def generate_quiz():
     data = request.json or {}
     topic = str(data.get("topic", "")).strip()
     requested_difficulty = normalize_difficulty(data.get("difficulty", "medium"))
+    num_questions = int(data.get("numQuestions", 15))
+    num_questions = max(5, min(20, num_questions))  # clamp 5–20
 
     if not topic:
         return jsonify({"success": False, "error": "Topic is required"}), 400
 
     try:
-        generation_prompt = build_quiz_prompt(topic, requested_difficulty)
+        generation_prompt = build_quiz_prompt(topic, requested_difficulty, num_questions)
         response = model.generate_content(generation_prompt)
         parsed_json = extract_json_from_text(response.text)
         if not parsed_json:

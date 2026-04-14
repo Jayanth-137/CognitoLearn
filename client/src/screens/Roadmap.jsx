@@ -116,6 +116,44 @@ const Roadmap = () => {
         }
     }, [roadmap, id, saving, updateRoadmapInContext, toast]);
 
+    // Bulk-complete all subtopics of a topic in ONE api call
+    const handleMarkAllDone = useCallback(async (topicId) => {
+        if (!roadmap) return;
+
+        // Build updated topics with every subtopic of this topic marked complete
+        const updatedTopics = roadmap.topics.map(topic => {
+            if (topic.id !== topicId) return topic;
+            return {
+                ...topic,
+                subtopics: topic.subtopics.map(sub => ({ ...sub, completed: true }))
+            };
+        });
+
+        // Optimistic update
+        setRoadmap(prev => ({ ...prev, topics: updatedTopics }));
+
+        try {
+            setSaving(true);
+            const response = await api.put(`/roadmaps/${id}`, { topics: updatedTopics });
+            if (response.data.success && response.data.roadmap) {
+                setRoadmap(response.data.roadmap);
+                updateRoadmapInContext(response.data.roadmap);
+                const topic = response.data.roadmap.topics.find(t => t.id === topicId);
+                const hasQuiz = topic?.quizRecommended !== false;
+                if (hasQuiz) {
+                    toast.info(`🎉 "${topic?.title}" completed! Take the quiz to test your knowledge.`, { title: 'Topic Completed!' });
+                } else {
+                    toast.success(`🎉 "${topic?.title}" completed! Next topic is now unlocked.`, { title: 'Great Progress!' });
+                }
+            }
+        } catch (err) {
+            console.error('Mark all done error:', err);
+            toast.error('Failed to save progress', { title: 'Update Failed' });
+        } finally {
+            setSaving(false);
+        }
+    }, [roadmap, id, updateRoadmapInContext, toast]);
+
     // Calculate progress from topics (before any early returns!)
     const totalSubtopics = roadmap?.topics?.reduce((acc, t) => acc + (t.subtopics?.length || 0), 0) || 0;
     const completedSubtopics = roadmap?.topics?.reduce((acc, t) =>
@@ -244,6 +282,7 @@ const Roadmap = () => {
                     data={roadmap.topics}
                     roadmapId={roadmap._id}
                     onSubtopicToggle={handleSubtopicToggle}
+                    onMarkAllDone={handleMarkAllDone}
                     onChatTopic={(topicTitle) => openChat({
                         roadmapId: roadmap._id,
                         roadmap,

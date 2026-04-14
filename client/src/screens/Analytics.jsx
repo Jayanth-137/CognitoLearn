@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Target, BookOpen, Flame, BarChart3, Loader2 } from 'lucide-react';
+import { TrendingUp, Target, BookOpen, Flame, BarChart3, Loader2, Brain } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import RoadmapCard from '../components/roadmap/RoadmapCard';
 import { useRoadmaps } from '../context/RoadmapContext';
@@ -78,6 +78,7 @@ const Analytics = () => {
     const toast = useToast();
     const [streakData, setStreakData] = useState({ current: 0 });
     const [streakLoading, setStreakLoading] = useState(true);
+    const [masteryData, setMasteryData] = useState(null);
 
     // Fetch streak data (separate from roadmaps)
     useEffect(() => {
@@ -96,6 +97,19 @@ const Analytics = () => {
         };
 
         fetchStreakData();
+
+        // Fetch mastery data
+        const fetchMasteryData = async () => {
+            try {
+                const response = await api.get('/analytics/mastery');
+                if (response.data.success) {
+                    setMasteryData(response.data.mastery);
+                }
+            } catch (err) {
+                console.log('Mastery endpoint not available');
+            }
+        };
+        fetchMasteryData();
     }, []);
 
     const loading = roadmapsLoading || streakLoading;
@@ -211,6 +225,49 @@ const Analytics = () => {
                         color="orange"
                     />
                 </div>
+
+                {/* Mastery Overview Section */}
+                {masteryData && masteryData.totalTopicsTracked > 0 && (
+                    <div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Brain size={20} className="text-purple-500" />
+                                Mastery Overview
+                            </h2>
+                            <span className="text-sm text-slate-500">
+                                {masteryData.masteredTopics} of {masteryData.totalTopicsTracked} mastered
+                            </span>
+                        </div>
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Average Mastery</span>
+                                <span className="text-lg font-bold text-slate-800 dark:text-white">{masteryData.averageMastery}%</span>
+                            </div>
+                            <div className="space-y-3">
+                                {masteryData.topicStates.map((topic, idx) => {
+                                    const barColor = topic.masteryLevel >= 90
+                                        ? 'bg-gradient-to-r from-emerald-500 to-green-400'
+                                        : topic.masteryLevel >= 60
+                                        ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                                        : 'bg-gradient-to-r from-indigo-500 to-purple-400';
+                                    return (
+                                        <div key={`${topic.roadmapId}-${topic.topicId}-${idx}`}>
+                                            <div className="flex items-center justify-between text-xs mb-1">
+                                                <span className="text-slate-600 dark:text-slate-400 truncate max-w-[60%]">{topic.topicId}</span>
+                                                <span className={`font-bold ${topic.mastered ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'}`}>
+                                                    {topic.masteryLevel}%{topic.mastered && ' ✓'}
+                                                </span>
+                                            </div>
+                                            <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${topic.masteryLevel}%`, transition: 'width 0.8s ease-out' }} />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Roadmaps Grid */}
                 <div>

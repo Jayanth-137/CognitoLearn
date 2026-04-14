@@ -14,6 +14,7 @@ const topicSchema = new mongoose.Schema({
   type: { type: String, default: 'milestone' },
   quizRecommended: { type: Boolean, default: true },
   quizPassed: { type: Boolean, default: false },
+  masteryLevel: { type: Number, default: 0, min: 0, max: 1 },
   subtopics: [subtopicSchema]
 });
 
